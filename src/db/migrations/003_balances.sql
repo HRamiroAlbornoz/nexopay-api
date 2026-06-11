@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS balances (
   CONSTRAINT unique_wallet_currency UNIQUE (wallet_id, currency_code)
 );
 
+DROP TRIGGER IF EXISTS trigger_balances_updated_at ON balances;
 CREATE TRIGGER trigger_balances_updated_at
   BEFORE UPDATE ON balances
   FOR EACH ROW

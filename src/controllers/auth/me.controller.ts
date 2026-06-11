@@ -13,8 +13,8 @@ export async function me(req: Request, res: Response, next: NextFunction): Promi
     res.status(200).json({
       id: user.id,
       email: user.email,
-      full_name: user.full_name,
-      created_at: user.created_at,
+      first_name: user.first_name,
+      last_name: user.last_name,
     });
   } catch (err) {
     next(err);
