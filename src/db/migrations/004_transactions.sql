@@ -1,5 +1,11 @@
-CREATE TYPE transaction_type AS ENUM ('buy', 'sell', 'exchange', 'transfer_in', 'transfer_out');
-CREATE TYPE transaction_status AS ENUM ('pending', 'completed', 'failed');
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'transaction_type') THEN
+    CREATE TYPE transaction_type AS ENUM ('buy', 'sell', 'exchange', 'transfer_in', 'transfer_out');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'transaction_status') THEN
+    CREATE TYPE transaction_status AS ENUM ('pending', 'completed', 'failed');
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS transactions (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -15,6 +21,6 @@ CREATE TABLE IF NOT EXISTS transactions (
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_transactions_wallet_id ON transactions(wallet_id);
-CREATE INDEX idx_transactions_created_at ON transactions(created_at DESC);
-CREATE INDEX idx_transactions_type ON transactions(type);
+CREATE INDEX IF NOT EXISTS idx_transactions_wallet_id ON transactions(wallet_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON transactions(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type);

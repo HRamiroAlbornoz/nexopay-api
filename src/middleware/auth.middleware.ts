@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken, TokenPayload } from '../helpers/jwt.helpers';
+import { COOKIE_NAME } from '../config/cookie';
 
 declare global {
   namespace Express {
@@ -10,14 +11,12 @@ declare global {
 }
 
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
-  const authHeader = req.headers.authorization;
+  const token = req.cookies[COOKIE_NAME] as string | undefined;
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (!token) {
     res.status(401).json({ code: 'MISSING_TOKEN', message: 'Token de autenticación requerido' });
     return;
   }
-
-  const token = authHeader.slice(7);
 
   try {
     const payload = verifyToken(token);

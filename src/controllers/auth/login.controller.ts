@@ -4,6 +4,7 @@ import { findUserByEmail } from '../../queries/user.queries';
 import { verifyPassword } from '../../helpers/password.helpers';
 import { signToken } from '../../helpers/jwt.helpers';
 import { AppError } from '../../middleware/error.middleware';
+import { COOKIE_NAME, COOKIE_OPTIONS } from '../../config/cookie';
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido').max(255),
@@ -37,12 +38,13 @@ export async function login(req: Request, res: Response, next: NextFunction): Pr
 
     const token = signToken({ id: user.id, email: user.email });
 
+    res.cookie(COOKIE_NAME, token, COOKIE_OPTIONS);
     res.status(200).json({
-      token,
       user: {
         id: user.id,
         email: user.email,
-        full_name: user.full_name,
+        first_name: user.first_name,
+        last_name: user.last_name,
       },
     });
   } catch (err) {
