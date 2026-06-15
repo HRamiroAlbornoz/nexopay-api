@@ -5,6 +5,7 @@ import { createWallet } from '../../queries/wallet.queries';
 import { hashPassword } from '../../helpers/password.helpers';
 import { signToken } from '../../helpers/jwt.helpers';
 import { AppError } from '../../middleware/error.middleware';
+import { COOKIE_NAME, COOKIE_OPTIONS } from '../../config/cookie';
 
 const registerSchema = z.object({
   email: z.string().email('Email inválido').max(255),
@@ -12,10 +13,8 @@ const registerSchema = z.object({
     .string()
     .min(8, 'La contraseña debe tener al menos 8 caracteres')
     .max(72, 'La contraseña no puede superar los 72 caracteres'),
-  full_name: z
-    .string()
-    .min(2, 'El nombre debe tener al menos 2 caracteres')
-    .max(255),
+  first_name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').max(100),
+  last_name: z.string().min(2, 'El apellido debe tener al menos 2 caracteres').max(100),
 });
 
 export async function register(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -31,7 +30,7 @@ export async function register(req: Request, res: Response, next: NextFunction):
       return;
     }
 
-    const { email, password, full_name } = parsed.data;
+    const { email, password, first_name, last_name } = parsed.data;
     const normalizedEmail = email.toLowerCase();
 
     const existingUser = await findUserByEmail(normalizedEmail);
@@ -41,17 +40,18 @@ export async function register(req: Request, res: Response, next: NextFunction):
 
     const password_hash = await hashPassword(password);
 
-    const user = await createUser({ email: normalizedEmail, password_hash, full_name });
+    const user = await createUser({ email: normalizedEmail, password_hash, first_name, last_name });
     const wallet = await createWallet(user.id);
 
     const token = signToken({ id: user.id, email: user.email });
 
+    res.cookie(COOKIE_NAME, token, COOKIE_OPTIONS);
     res.status(201).json({
-      token,
       user: {
         id: user.id,
         email: user.email,
-        full_name: user.full_name,
+        first_name: user.first_name,
+        last_name: user.last_name,
       },
     });
   } catch (err) {

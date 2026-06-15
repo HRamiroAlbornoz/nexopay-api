@@ -1,4 +1,8 @@
-CREATE TYPE goal_status AS ENUM ('active', 'completed', 'cancelled');
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'goal_status') THEN
+    CREATE TYPE goal_status AS ENUM ('active', 'completed', 'cancelled');
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS savings_goals (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -13,9 +17,10 @@ CREATE TABLE IF NOT EXISTS savings_goals (
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+DROP TRIGGER IF EXISTS trigger_savings_goals_updated_at ON savings_goals;
 CREATE TRIGGER trigger_savings_goals_updated_at
   BEFORE UPDATE ON savings_goals
   FOR EACH ROW
   EXECUTE FUNCTION set_updated_at();
 
-CREATE INDEX idx_savings_goals_wallet_id ON savings_goals(wallet_id);
+CREATE INDEX IF NOT EXISTS idx_savings_goals_wallet_id ON savings_goals(wallet_id);

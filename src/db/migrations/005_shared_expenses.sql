@@ -1,4 +1,8 @@
-CREATE TYPE expense_status AS ENUM ('pending', 'settled');
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'expense_status') THEN
+    CREATE TYPE expense_status AS ENUM ('pending', 'settled');
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS shared_expenses (
   id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -21,6 +25,6 @@ CREATE TABLE IF NOT EXISTS shared_expense_members (
   CONSTRAINT unique_expense_member UNIQUE (expense_id, wallet_id)
 );
 
-CREATE INDEX idx_shared_expenses_wallet_id ON shared_expenses(created_by_wallet_id);
-CREATE INDEX idx_shared_expense_members_expense_id ON shared_expense_members(expense_id);
-CREATE INDEX idx_shared_expense_members_wallet_id ON shared_expense_members(wallet_id);
+CREATE INDEX IF NOT EXISTS idx_shared_expenses_wallet_id ON shared_expenses(created_by_wallet_id);
+CREATE INDEX IF NOT EXISTS idx_shared_expense_members_expense_id ON shared_expense_members(expense_id);
+CREATE INDEX IF NOT EXISTS idx_shared_expense_members_wallet_id ON shared_expense_members(wallet_id);

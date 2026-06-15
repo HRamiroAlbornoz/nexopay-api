@@ -21,13 +21,13 @@ async function seed(): Promise<void> {
     const passwordHash = await bcrypt.hash('Test1234', 10);
 
     const { rows: [hernan] } = await client.query(
-      `INSERT INTO users (email, password_hash, full_name) VALUES ($1, $2, $3) RETURNING id`,
-      ['hernan@nexopay.com', passwordHash, 'Hernán Albornoz']
+      `INSERT INTO users (email, password_hash, first_name, last_name) VALUES ($1, $2, $3, $4) RETURNING id`,
+      ['hernan@nexopay.com', passwordHash, 'Hernán', 'Albornoz']
     );
 
     const { rows: [richard] } = await client.query(
-      `INSERT INTO users (email, password_hash, full_name) VALUES ($1, $2, $3) RETURNING id`,
-      ['richard@nexopay.com', passwordHash, 'Richard González']
+      `INSERT INTO users (email, password_hash, first_name, last_name) VALUES ($1, $2, $3, $4) RETURNING id`,
+      ['richard@nexopay.com', passwordHash, 'Richard', 'González']
     );
 
     const { rows: [hernanWallet] } = await client.query(

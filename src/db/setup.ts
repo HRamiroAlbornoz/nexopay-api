@@ -12,6 +12,7 @@ const migrationFiles = [
   '004_transactions.sql',
   '005_shared_expenses.sql',
   '006_savings_goals.sql',
+  '007_users_name_split.sql',
 ];
 
 async function runMigrations(): Promise<void> {
