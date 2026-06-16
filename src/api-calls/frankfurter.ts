@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { ExchangeRates } from '../types/currency.types';
 
 const FRANKFURTER_URL = 'https://api.frankfurter.app';
-const CACHE_TTL_MS = 60 * 60 * 1000;
+export const CACHE_TTL_MS = 60 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 8000;
 
 const responseSchema = z.object({
