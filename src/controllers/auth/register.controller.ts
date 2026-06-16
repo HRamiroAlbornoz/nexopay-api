@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { findUserByEmail, createUser } from '../../queries/user.queries';
-import { createWallet, createInitialBalances } from '../../queries/wallet.queries';
+import { createWallet } from '../../queries/wallet.queries';
 import { hashPassword } from '../../helpers/password.helpers';
 import { signToken } from '../../helpers/jwt.helpers';
 import { AppError } from '../../middleware/error.middleware';
@@ -42,7 +42,6 @@ export async function register(req: Request, res: Response, next: NextFunction):
 
     const user = await createUser({ email: normalizedEmail, password_hash, first_name, last_name });
     const wallet = await createWallet(user.id);
-    await createInitialBalances(wallet.id);
 
     const token = signToken({ id: user.id, email: user.email });
 
