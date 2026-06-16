@@ -8,6 +8,7 @@ export default defineConfig({
     env: {
       JWT_SECRET: 'test-secret-key-para-vitest-de-al-menos-32-chars',
       JWT_EXPIRES_IN: '7d',
+      GEMINI_API_KEY: 'test-gemini-key-no-es-real',
     },
   },
 });
