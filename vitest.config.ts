@@ -5,5 +5,9 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['tests/**/*.test.ts'],
+    env: {
+      JWT_SECRET: 'test-secret-key-para-vitest-de-al-menos-32-chars',
+      JWT_EXPIRES_IN: '7d',
+    },
   },
 });
