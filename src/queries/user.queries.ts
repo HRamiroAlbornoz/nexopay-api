@@ -1,4 +1,7 @@
+import { PoolClient } from 'pg';
 import pool from '../db/connection';
+import { createWallet } from './wallet.queries';
+import { Wallet } from '../types/wallet.types';
 
 export interface User {
   id: string;
@@ -39,8 +42,9 @@ export async function findUserById(id: string): Promise<User | null> {
   return result.rows[0] ?? null;
 }
 
-export async function createUser(data: CreateUserData): Promise<User> {
-  const result = await pool.query<User>(
+export async function createUser(data: CreateUserData, client?: PoolClient): Promise<User> {
+  const db = client ?? pool;
+  const result = await db.query<User>(
     `INSERT INTO users (email, password_hash, first_name, last_name)
      VALUES ($1, $2, $3, $4)
      RETURNING id, email, password_hash, first_name, last_name, created_at, updated_at`,
@@ -48,4 +52,20 @@ export async function createUser(data: CreateUserData): Promise<User> {
   );
 
   return result.rows[0];
+}
+
+export async function createUserWithWallet(data: CreateUserData): Promise<{ user: User; wallet: Wallet }> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const user = await createUser(data, client);
+    const wallet = await createWallet(user.id, client);
+    await client.query('COMMIT');
+    return { user, wallet };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }

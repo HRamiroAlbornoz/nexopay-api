@@ -6,5 +6,5 @@ export interface Wallet {
 
 export interface Balance {
   currency_code: string;
-  amount: string; // viene como string de PostgreSQL NUMERIC
+  amount: number;
 }

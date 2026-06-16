@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { getWalletByUserId, findWalletByUserEmail } from '../../queries/wallet.queries';
+import { findWalletByUserIdOrThrow, findWalletByUserEmail } from '../../queries/wallet.queries';
 import { executeTransfer } from '../../queries/transaction.queries';
 import { AppError } from '../../middleware/error.middleware';
 import { SUPPORTED_CURRENCIES } from '../../types/currency.types';
@@ -22,10 +22,7 @@ export async function transfer(req: Request, res: Response, next: NextFunction):
 
     const { recipient_email, currency_code, amount } = parsed.data;
 
-    const senderWallet = await getWalletByUserId(req.user!.id);
-    if (!senderWallet) {
-      throw new AppError('WALLET_NOT_FOUND', 'Wallet no encontrada', 404);
-    }
+    const senderWallet = await findWalletByUserIdOrThrow(req.user!.id);
 
     const recipientWallet = await findWalletByUserEmail(recipient_email);
     if (!recipientWallet) {
