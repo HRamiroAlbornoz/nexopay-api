@@ -1,12 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { z } from 'zod';
-
-const envSchema = z.object({
-  JWT_SECRET: z.string().min(32, 'JWT_SECRET debe tener al menos 32 caracteres'),
-  JWT_EXPIRES_IN: z.string().default('15m'),
-});
-
-const env = envSchema.parse(process.env);
+import { env } from '../env';
 
 export interface TokenPayload {
   id: string;

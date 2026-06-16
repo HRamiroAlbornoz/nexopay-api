@@ -1,11 +1,7 @@
 import { z } from 'zod';
 import { AppError } from '../middleware/error.middleware';
-
-const envSchema = z.object({
-  GEMINI_API_KEY: z.string().min(1, 'GEMINI_API_KEY es requerida'),
-});
-
-const env = envSchema.parse(process.env);
+import { env } from '../env';
+import { fetchWithTimeout } from '../helpers/http.helpers';
 
 const GEMINI_MODEL = 'gemini-2.5-flash';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
@@ -36,17 +32,14 @@ const geminiResponseSchema = z.object({
 // y devuelve solo el texto de la respuesta. Lanza AppError si Gemini falla,
 // devuelve un formato inesperado, o bloquea la respuesta por seguridad.
 export async function generateChatReply(systemInstruction: string, userMessage: string): Promise<string> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-
-  try {
-    const response = await fetch(GEMINI_URL, {
+  const response = await fetchWithTimeout(
+    GEMINI_URL,
+    {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-goog-api-key': env.GEMINI_API_KEY,
       },
-      signal: controller.signal,
       body: JSON.stringify({
         contents: [{ role: 'user', parts: [{ text: userMessage }] }],
         systemInstruction: { parts: [{ text: systemInstruction }] },
@@ -55,33 +48,32 @@ export async function generateChatReply(systemInstruction: string, userMessage: 
           maxOutputTokens: MAX_OUTPUT_TOKENS,
         },
       }),
-    });
+    },
+    FETCH_TIMEOUT_MS
+  );
 
-    if (!response.ok) {
-      console.error(`Gemini respondió con status ${response.status}`);
-      throw new AppError('CHATBOT_UNAVAILABLE', 'El chatbot no está disponible en este momento, intentá de nuevo más tarde', 503);
-    }
-
-    let data: z.infer<typeof geminiResponseSchema>;
-    try {
-      data = geminiResponseSchema.parse(await response.json());
-    } catch (parseError) {
-      console.error('Gemini: la respuesta no tiene el formato esperado', parseError);
-      throw new AppError('CHATBOT_UNAVAILABLE', 'El chatbot no está disponible en este momento, intentá de nuevo más tarde', 503);
-    }
-
-    const firstCandidate = data.candidates?.[0];
-
-    // Sin candidates o sin content: Gemini bloqueó la respuesta por seguridad
-    if (!firstCandidate?.content) {
-      throw new AppError('CHATBOT_BLOCKED', 'No pude generar una respuesta para ese mensaje, intentá reformularlo', 502);
-    }
-
-    return firstCandidate.content.parts
-      .map((part) => part.text)
-      .join('')
-      .trim();
-  } finally {
-    clearTimeout(timeout);
+  if (!response.ok) {
+    console.error(`Gemini respondió con status ${response.status}`);
+    throw new AppError('CHATBOT_UNAVAILABLE', 'El chatbot no está disponible en este momento, intentá de nuevo más tarde', 503);
   }
+
+  let data: z.infer<typeof geminiResponseSchema>;
+  try {
+    data = geminiResponseSchema.parse(await response.json());
+  } catch (parseError) {
+    console.error('Gemini: la respuesta no tiene el formato esperado', parseError);
+    throw new AppError('CHATBOT_UNAVAILABLE', 'El chatbot no está disponible en este momento, intentá de nuevo más tarde', 503);
+  }
+
+  const firstCandidate = data.candidates?.[0];
+
+  // Sin candidates o sin content: Gemini bloqueó la respuesta por seguridad
+  if (!firstCandidate?.content) {
+    throw new AppError('CHATBOT_BLOCKED', 'No pude generar una respuesta para ese mensaje, intentá reformularlo', 502);
+  }
+
+  return firstCandidate.content.parts
+    .map((part) => part.text)
+    .join('')
+    .trim();
 }

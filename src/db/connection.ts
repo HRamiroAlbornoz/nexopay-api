@@ -1,12 +1,5 @@
 import { Pool } from 'pg';
-import { z } from 'zod';
-
-const envSchema = z.object({
-  DATABASE_URL: z.string().min(1, 'DATABASE_URL es requerida'),
-  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-});
-
-const env = envSchema.parse(process.env);
+import { env } from '../env';
 
 const pool = new Pool({
   connectionString: env.DATABASE_URL,

@@ -1,6 +1,8 @@
+import { env } from '../env';
+
 export const COOKIE_NAME = 'nexopay_token';
 
-const isProd = process.env.NODE_ENV === 'production';
+const isProd = env.NODE_ENV === 'production';
 
 export const COOKIE_OPTIONS = {
   httpOnly: true,
