@@ -1,8 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { getWalletByUserId } from '../../queries/wallet.queries';
+import { findWalletByUserIdOrThrow } from '../../queries/wallet.queries';
 import { getTransactionsByWalletId } from '../../queries/transaction.queries';
-import { AppError } from '../../middleware/error.middleware';
 
 const MAX_LIMIT = 100;
 
@@ -23,10 +22,7 @@ export async function getTransactions(req: Request, res: Response, next: NextFun
     const { page, limit } = parsed.data;
     const offset = (page - 1) * limit;
 
-    const wallet = await getWalletByUserId(req.user!.id);
-    if (!wallet) {
-      throw new AppError('WALLET_NOT_FOUND', 'Wallet no encontrada', 404);
-    }
+    const wallet = await findWalletByUserIdOrThrow(req.user!.id);
 
     const transactions = await getTransactionsByWalletId(wallet.id, limit, offset);
 

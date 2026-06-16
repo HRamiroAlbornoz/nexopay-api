@@ -1,10 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { getWalletByUserId } from '../../queries/wallet.queries';
+import { findWalletByUserIdOrThrow } from '../../queries/wallet.queries';
 import { executeConversion } from '../../queries/transaction.queries';
 import { getRates } from '../../api-calls/frankfurter';
 import { convertAmount } from '../../helpers/currency.helpers';
-import { AppError } from '../../middleware/error.middleware';
 
 const buySchema = z.object({
   currency_to: z.enum(['USD', 'EUR']),
@@ -22,10 +21,7 @@ export async function buy(req: Request, res: Response, next: NextFunction): Prom
 
     const { currency_to, amount_from } = parsed.data;
 
-    const wallet = await getWalletByUserId(req.user!.id);
-    if (!wallet) {
-      throw new AppError('WALLET_NOT_FOUND', 'Wallet no encontrada', 404);
-    }
+    const wallet = await findWalletByUserIdOrThrow(req.user!.id);
 
     const rates = await getRates();
     const amount_to = convertAmount('ARS', currency_to, amount_from, rates);
