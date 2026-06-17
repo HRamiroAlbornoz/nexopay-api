@@ -189,7 +189,6 @@ export async function getTransactionsByWalletId(
 
 export async function executeSavingsGoalFunding(
   walletId: string,
-  goalId: string,
   currencyCode: CurrencyCode,
   amount: number
 ): Promise<Transaction> {
@@ -221,11 +220,12 @@ export async function executeSavingsGoalFunding(
       [amount, walletId, currencyCode]
     );
 
+    // ✅ Ahora relacion_wallet_id es NULL
     const txResult = await client.query<Transaction>(
       `INSERT INTO transactions (wallet_id, type, status, currency_from, currency_to, amount_from, amount_to, exchange_rate, related_wallet_id)
-       VALUES ($1, 'savings_goal', 'completed', $2, $2, $3, $3, 1, $4)
+       VALUES ($1, 'savings_goal', 'completed', $2, $2, $3, $3, 1, NULL)
        RETURNING ${TX_COLS}`,
-      [walletId, currencyCode, amount, goalId]
+      [walletId, currencyCode, amount]
     );
 
     await client.query('COMMIT');

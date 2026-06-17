@@ -54,7 +54,6 @@ export async function fundGoalController(req: Request, res: Response, next: Next
 
     const transaction = await executeSavingsGoalFunding(
       wallet.id,
-      goalId,
       goal.currency_code as any,
       amount
     );
