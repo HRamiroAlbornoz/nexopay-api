@@ -5,7 +5,7 @@ import { AppError } from '../middleware/error.middleware';
 export interface Transaction {
   id: string;
   wallet_id: string;
-  type: 'buy' | 'sell' | 'exchange' | 'transfer_in' | 'transfer_out';
+  type: 'buy' | 'sell' | 'exchange' | 'transfer_in' | 'transfer_out' | 'savings_goal_fund';
   status: 'pending' | 'completed' | 'failed';
   currency_from: string;
   currency_to: string;
@@ -33,7 +33,7 @@ interface TransferData {
   amount: number;
 }
 
-const TX_COLS = `
+export const TX_COLS = `
   id, wallet_id, type, status, currency_from, currency_to,
   amount_from::float8 AS amount_from, amount_to::float8 AS amount_to,
   exchange_rate::float8 AS exchange_rate, related_wallet_id, created_at
