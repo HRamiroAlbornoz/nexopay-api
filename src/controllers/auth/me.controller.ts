@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { findUserById } from '../../queries/user.queries';
 import { AppError } from '../../middleware/error.middleware';
+import { toPublicUser } from '../../helpers/auth-response.helpers';
 
 export async function me(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
@@ -10,12 +11,7 @@ export async function me(req: Request, res: Response, next: NextFunction): Promi
       throw new AppError('USER_NOT_FOUND', 'Usuario no encontrado', 404);
     }
 
-    res.status(200).json({
-      id: user.id,
-      email: user.email,
-      first_name: user.first_name,
-      last_name: user.last_name,
-    });
+    res.status(200).json(toPublicUser(user));
   } catch (err) {
     next(err);
   }

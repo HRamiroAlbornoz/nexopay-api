@@ -2,9 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { findUserByEmail, createUserWithWallet } from '../../queries/user.queries';
 import { hashPassword } from '../../helpers/password.helpers';
-import { signToken } from '../../helpers/jwt.helpers';
 import { AppError } from '../../middleware/error.middleware';
-import { COOKIE_NAME, COOKIE_OPTIONS } from '../../config/cookie';
+import { respondWithSession } from '../../helpers/auth-response.helpers';
 
 const registerSchema = z.object({
   email: z.string().email('Email inválido').max(255),
@@ -41,17 +40,7 @@ export async function register(req: Request, res: Response, next: NextFunction):
 
     const { user } = await createUserWithWallet({ email: normalizedEmail, password_hash, first_name, last_name });
 
-    const token = signToken({ id: user.id, email: user.email });
-
-    res.cookie(COOKIE_NAME, token, COOKIE_OPTIONS);
-    res.status(201).json({
-      user: {
-        id: user.id,
-        email: user.email,
-        first_name: user.first_name,
-        last_name: user.last_name,
-      },
-    });
+    respondWithSession(res, user, 201);
   } catch (err) {
     next(err);
   }

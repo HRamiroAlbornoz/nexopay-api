@@ -6,11 +6,9 @@ import {
   findUserByEmail,
   linkGoogleSubToUser,
   createUserWithWallet,
-  User,
 } from '../../queries/user.queries';
-import { signToken } from '../../helpers/jwt.helpers';
 import { AppError } from '../../middleware/error.middleware';
-import { COOKIE_NAME, COOKIE_OPTIONS } from '../../config/cookie';
+import { respondWithSession } from '../../helpers/auth-response.helpers';
 import { env } from '../../env';
 
 const googleAuthSchema = z.object({
@@ -18,15 +16,6 @@ const googleAuthSchema = z.object({
 });
 
 const googleClient = new OAuth2Client(env.GOOGLE_CLIENT_ID);
-
-function toPublicUser(user: User): Pick<User, 'id' | 'email' | 'first_name' | 'last_name'> {
-  return {
-    id: user.id,
-    email: user.email,
-    first_name: user.first_name,
-    last_name: user.last_name,
-  };
-}
 
 function buildFirstName(payload: TokenPayload, email: string): string {
   if (payload.given_name) {
@@ -57,12 +46,6 @@ async function verifyGoogleToken(credential: string): Promise<VerifiedGooglePayl
   }
 
   return payload as VerifiedGooglePayload;
-}
-
-function respondWithSession(res: Response, user: User, httpStatus: 200 | 201): void {
-  const token = signToken({ id: user.id, email: user.email });
-  res.cookie(COOKIE_NAME, token, COOKIE_OPTIONS);
-  res.status(httpStatus).json({ user: toPublicUser(user) });
 }
 
 export async function googleAuth(req: Request, res: Response, next: NextFunction): Promise<void> {

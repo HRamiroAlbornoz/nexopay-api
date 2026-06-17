@@ -2,9 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { findUserByEmail } from '../../queries/user.queries';
 import { verifyPassword } from '../../helpers/password.helpers';
-import { signToken } from '../../helpers/jwt.helpers';
 import { AppError } from '../../middleware/error.middleware';
-import { COOKIE_NAME, COOKIE_OPTIONS } from '../../config/cookie';
+import { respondWithSession } from '../../helpers/auth-response.helpers';
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido').max(255),
@@ -41,17 +40,7 @@ export async function login(req: Request, res: Response, next: NextFunction): Pr
       throw new AppError('INVALID_CREDENTIALS', 'Credenciales inválidas', 401);
     }
 
-    const token = signToken({ id: user.id, email: user.email });
-
-    res.cookie(COOKIE_NAME, token, COOKIE_OPTIONS);
-    res.status(200).json({
-      user: {
-        id: user.id,
-        email: user.email,
-        first_name: user.first_name,
-        last_name: user.last_name,
-      },
-    });
+    respondWithSession(res, user, 200);
   } catch (err) {
     next(err);
   }
