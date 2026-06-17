@@ -6,6 +6,7 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(32, 'JWT_SECRET debe tener al menos 32 caracteres'),
   JWT_EXPIRES_IN: z.string().default('7d'),
   GEMINI_API_KEY: z.string().min(1, 'GEMINI_API_KEY es requerida'),
+  GOOGLE_CLIENT_ID: z.string().min(1, 'GOOGLE_CLIENT_ID es requerida'),
   FRONTEND_URL: z.string().default('http://localhost:5173'),
   PORT: z.coerce.number().int().positive().default(3000),
 });

@@ -31,7 +31,12 @@ export async function login(req: Request, res: Response, next: NextFunction): Pr
       throw new AppError('INVALID_CREDENTIALS', 'Credenciales inválidas', 401);
     }
 
-    const passwordMatch = await verifyPassword(password, user.password_hash);
+    const passwordHash = user.password_hash;
+    if (!passwordHash) {
+      throw new AppError('INVALID_CREDENTIALS', 'Credenciales inválidas', 401);
+    }
+
+    const passwordMatch = await verifyPassword(password, passwordHash);
     if (!passwordMatch) {
       throw new AppError('INVALID_CREDENTIALS', 'Credenciales inválidas', 401);
     }

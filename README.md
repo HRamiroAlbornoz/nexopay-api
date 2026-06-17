@@ -90,6 +90,7 @@ El servidor queda disponible en `http://localhost:3000`.
 | `PORT` | Puerto del servidor (por defecto `3000`) |
 | `NODE_ENV` | Entorno: `development` o `production` |
 | `GEMINI_API_KEY` | API key de Google Gemini (https://aistudio.google.com/app/apikey) |
+| `GOOGLE_CLIENT_ID` | Client ID de Google OAuth (público, debe coincidir con el del frontend) — usado para verificar el ID token de "Continuar con Google" |
 | `FRONTEND_URL` | Origen permitido para CORS (URL del frontend) |
 
 Todas se validan con Zod al arrancar el servidor (`src/env.ts`) — si falta alguna crítica, la app no levanta.

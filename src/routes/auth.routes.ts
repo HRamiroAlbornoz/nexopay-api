@@ -3,6 +3,7 @@ import { register } from '../controllers/auth/register.controller';
 import { login } from '../controllers/auth/login.controller';
 import { logout } from '../controllers/auth/logout.controller';
 import { me } from '../controllers/auth/me.controller';
+import { googleAuth } from '../controllers/auth/google.controller';
 import { requireAuth } from '../middleware/auth.middleware';
 import { createRateLimiter } from '../middleware/rate-limit';
 
@@ -15,6 +16,7 @@ const authLimiter = createRateLimiter({
 
 router.post('/register', authLimiter, register);
 router.post('/login', authLimiter, login);
+router.post('/google', authLimiter, googleAuth);
 router.post('/logout', requireAuth, logout);
 router.get('/me', requireAuth, me);
 
