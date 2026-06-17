@@ -98,7 +98,7 @@ describe('executeConversion', () => {
           { currency_code: 'USD', amount: 10 },
         ],
       })
-      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({ rowCount: 1 })
       .mockResolvedValueOnce({ rowCount: 0 });
 
     await expect(
@@ -179,7 +179,7 @@ describe('executeTransfer', () => {
           { wallet_id: 'recipient-wallet', amount: 0 },
         ],
       })
-      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({ rowCount: 1 })
       .mockResolvedValueOnce({ rowCount: 0 });
 
     await expect(
