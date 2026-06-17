@@ -5,7 +5,7 @@ import transactionsRoutes from './transactions.routes';
 import walletRoutes from './wallet.routes';
 import savingsGoalsRoutes from './savings-goals.routes';
 import chatbotRoutes from './chatbot.routes';
-
+import sharedExpensesRoutes from './shared-expenses.routes';
 const router = Router();
 
 router.use('/auth', authRoutes);
@@ -14,5 +14,5 @@ router.use('/transactions', transactionsRoutes);
 router.use('/wallet', walletRoutes);
 router.use('/savings-goals', savingsGoalsRoutes);
 router.use('/chatbot', chatbotRoutes);
-
+router.use('/shared-expenses', sharedExpensesRoutes);
 export default router;

@@ -237,3 +237,55 @@ export async function executeSavingsGoalFunding(
     client.release();
   }
 }
+
+export async function executeSharedExpenseSettlement(
+  payerWalletId: string,
+  recipientWalletId: string,
+  expenseId: string,
+  currencyCode: CurrencyCode,
+  amount: number
+): Promise<Transaction> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Bloquear balances
+    const balancesResult = await client.query(
+      `SELECT wallet_id, amount::float8 AS amount FROM balances
+       WHERE wallet_id IN ($1, $2) AND currency_code = $3
+       ORDER BY wallet_id FOR UPDATE`,
+      [payerWalletId, recipientWalletId, currencyCode]
+    );
+    const payerRow = balancesResult.rows.find(r => r.wallet_id === payerWalletId);
+    if (!payerRow || payerRow.amount < amount) {
+      throw new AppError('INSUFFICIENT_BALANCE', 'Saldo insuficiente para pagar la deuda', 422);
+    }
+
+    // Debitar al pagador
+    await client.query(
+      `UPDATE balances SET amount = amount - $1 WHERE wallet_id = $2 AND currency_code = $3`,
+      [amount, payerWalletId, currencyCode]
+    );
+    // Acreditar al creador
+    await client.query(
+      `UPDATE balances SET amount = amount + $1 WHERE wallet_id = $2 AND currency_code = $3`,
+      [amount, recipientWalletId, currencyCode]
+    );
+
+    // Registrar transacción para el pagador (tipo 'shared_expense')
+    const txResult = await client.query<Transaction>(
+      `INSERT INTO transactions (wallet_id, type, status, currency_from, currency_to, amount_from, amount_to, exchange_rate, related_wallet_id)
+       VALUES ($1, 'shared_expense', 'completed', $2, $2, $3, $3, 1, $4)
+       RETURNING ${TX_COLS}`,
+      [payerWalletId, currencyCode, amount, expenseId]
+    );
+
+    await client.query('COMMIT');
+    return txResult.rows[0];
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}

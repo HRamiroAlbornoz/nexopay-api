@@ -72,3 +72,5 @@ export const findWalletByUserEmail = async (email: string): Promise<Wallet | nul
   );
   return result.rows[0] ?? null;
 };
+
+export const getWalletByUserId = findWalletByUserId;
