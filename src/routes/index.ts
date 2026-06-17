@@ -4,6 +4,7 @@ import ratesRoutes from './rates.routes';
 import transactionsRoutes from './transactions.routes';
 import walletRoutes from './wallet.routes';
 import chatbotRoutes from './chatbot.routes';
+import savingsGoalsRoutes from './savings-goals.routes';
 
 const router = Router();
 
@@ -12,5 +13,6 @@ router.use('/rates', ratesRoutes);
 router.use('/transactions', transactionsRoutes);
 router.use('/wallet', walletRoutes);
 router.use('/chatbot', chatbotRoutes);
+router.use('/savings-goals', savingsGoalsRoutes);
 
 export default router;
