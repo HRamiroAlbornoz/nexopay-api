@@ -1,5 +1,6 @@
 import { PoolClient } from 'pg';
 import pool from '../db/connection';
+import { withDbTransaction } from '../db/with-transaction';
 import { createWallet } from './wallet.queries';
 import { Wallet } from '../types/wallet.types';
 import { AppError } from '../middleware/error.middleware';
@@ -70,20 +71,16 @@ export async function createUser(data: CreateUserData, client?: PoolClient): Pro
 }
 
 export async function createUserWithWallet(data: CreateUserData): Promise<{ user: User; wallet: Wallet }> {
-  const client = await pool.connect();
   try {
-    await client.query('BEGIN');
-    const user = await createUser(data, client);
-    const wallet = await createWallet(user.id, client);
-    await client.query('COMMIT');
-    return { user, wallet };
+    return await withDbTransaction(async (client) => {
+      const user = await createUser(data, client);
+      const wallet = await createWallet(user.id, client);
+      return { user, wallet };
+    });
   } catch (error) {
-    await client.query('ROLLBACK');
     if (isUniqueViolation(error)) {
       throw new AppError('EMAIL_TAKEN', 'Ya existe una cuenta con ese email', 409);
     }
     throw error;
-  } finally {
-    client.release();
   }
 }
