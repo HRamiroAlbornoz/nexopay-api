@@ -3,16 +3,14 @@ import { withDbTransaction } from '../db/with-transaction';
 import { AppError } from '../middleware/error.middleware';
 import { SavingsGoal, CreateSavingsGoalInput } from '../types/savings-goal.types';
 import { Transaction, TX_COLS } from './transaction.queries';
+import { debitBalance } from './balance.queries';
+import { FLOAT_EPSILON } from '../types/currency.types';
 
 const GOAL_COLS = `
   id, wallet_id, title, target_amount::float8 AS target_amount,
   current_amount::float8 AS current_amount, currency_code, status,
   target_date, created_at, updated_at
 `;
-
-// Tolerancia para comparar montos NUMERIC(18,6) ya convertidos a float8: evita que
-// el arrastre de coma flotante deje una meta "casi completa" atascada en 'active'.
-const FLOAT_EPSILON = 1e-6;
 
 export async function createSavingsGoal(data: CreateSavingsGoalInput): Promise<SavingsGoal> {
   const { walletId, title, targetAmount, currencyCode, targetDate } = data;
@@ -86,17 +84,7 @@ export async function fundSavingsGoal(
       });
     }
 
-    const debitResult = await client.query(
-      `UPDATE balances SET amount = amount - $1 WHERE wallet_id = $2 AND currency_code = $3`,
-      [amount, walletId, goal.currency_code]
-    );
-
-    if ((debitResult.rowCount ?? 0) === 0) {
-      throw new AppError('BALANCE_NOT_FOUND', 'El balance de la wallet no existe', 500, {
-        walletId,
-        currency: goal.currency_code,
-      });
-    }
+    await debitBalance(client, walletId, goal.currency_code, amount);
 
     const newCurrentAmount = goal.current_amount + amount;
     const newStatus = newCurrentAmount >= goal.target_amount - FLOAT_EPSILON ? 'completed' : 'active';

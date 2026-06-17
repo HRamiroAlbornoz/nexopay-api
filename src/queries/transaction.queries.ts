@@ -2,11 +2,20 @@ import pool from '../db/connection';
 import { withDbTransaction } from '../db/with-transaction';
 import { CurrencyCode } from '../types/currency.types';
 import { AppError } from '../middleware/error.middleware';
+import { lockBalancesForUpdate, debitBalance, creditBalance } from './balance.queries';
 
 export interface Transaction {
   id: string;
   wallet_id: string;
-  type: 'buy' | 'sell' | 'exchange' | 'transfer_in' | 'transfer_out' | 'savings_goal_fund';
+  type:
+    | 'buy'
+    | 'sell'
+    | 'exchange'
+    | 'transfer_in'
+    | 'transfer_out'
+    | 'savings_goal_fund'
+    | 'shared_expense_paid'
+    | 'shared_expense_received';
   status: 'pending' | 'completed' | 'failed';
   currency_from: string;
   currency_to: string;
@@ -14,6 +23,7 @@ export interface Transaction {
   amount_to: number;
   exchange_rate: number;
   related_wallet_id: string | null;
+  shared_expense_id: string | null;
   created_at: Date;
 }
 
@@ -37,7 +47,7 @@ interface TransferData {
 export const TX_COLS = `
   id, wallet_id, type, status, currency_from, currency_to,
   amount_from::float8 AS amount_from, amount_to::float8 AS amount_to,
-  exchange_rate::float8 AS exchange_rate, related_wallet_id, created_at
+  exchange_rate::float8 AS exchange_rate, related_wallet_id, shared_expense_id, created_at
 `;
 
 export async function executeConversion(data: ConversionData): Promise<Transaction> {
@@ -65,22 +75,8 @@ export async function executeConversion(data: ConversionData): Promise<Transacti
       });
     }
 
-    await client.query(
-      `UPDATE balances SET amount = amount - $1 WHERE wallet_id = $2 AND currency_code = $3`,
-      [amountFrom, walletId, currencyFrom]
-    );
-
-    const creditResult = await client.query(
-      `UPDATE balances SET amount = amount + $1 WHERE wallet_id = $2 AND currency_code = $3`,
-      [amountTo, walletId, currencyTo]
-    );
-
-    if ((creditResult.rowCount ?? 0) === 0) {
-      throw new AppError('BALANCE_NOT_FOUND', 'El balance de destino no existe', 500, {
-        walletId,
-        currency: currencyTo,
-      });
-    }
+    await debitBalance(client, walletId, currencyFrom, amountFrom);
+    await creditBalance(client, walletId, currencyTo, amountTo);
 
     const txResult = await client.query<Transaction>(
       `INSERT INTO transactions (wallet_id, type, status, currency_from, currency_to, amount_from, amount_to, exchange_rate)
@@ -97,18 +93,8 @@ export async function executeTransfer(data: TransferData): Promise<Transaction> 
   const { senderWalletId, recipientWalletId, currencyCode, amount } = data;
 
   return withDbTransaction(async (client) => {
-    // Bloquea ambas filas en orden canónico (wallet_id lexicográfico) para evitar deadlocks
-    // en transferencias mutuas simultáneas (A→B y B→A al mismo tiempo)
-    const balancesResult = await client.query<{ wallet_id: string; amount: number }>(
-      `SELECT wallet_id, amount::float8 AS amount FROM balances
-       WHERE wallet_id IN ($1, $2) AND currency_code = $3
-       ORDER BY wallet_id
-       FOR UPDATE`,
-      [senderWalletId, recipientWalletId, currencyCode]
-    );
-
-    const senderRow = balancesResult.rows.find((r) => r.wallet_id === senderWalletId);
-    const balance = senderRow?.amount ?? 0;
+    const balances = await lockBalancesForUpdate(client, senderWalletId, recipientWalletId, currencyCode);
+    const balance = balances.get(senderWalletId) ?? 0;
 
     if (balance < amount) {
       throw new AppError('INSUFFICIENT_BALANCE', 'Saldo insuficiente', 422, {
@@ -118,22 +104,8 @@ export async function executeTransfer(data: TransferData): Promise<Transaction> 
       });
     }
 
-    await client.query(
-      `UPDATE balances SET amount = amount - $1 WHERE wallet_id = $2 AND currency_code = $3`,
-      [amount, senderWalletId, currencyCode]
-    );
-
-    const creditResult = await client.query(
-      `UPDATE balances SET amount = amount + $1 WHERE wallet_id = $2 AND currency_code = $3`,
-      [amount, recipientWalletId, currencyCode]
-    );
-
-    if ((creditResult.rowCount ?? 0) === 0) {
-      throw new AppError('BALANCE_NOT_FOUND', 'El balance del destinatario no existe', 500, {
-        walletId: recipientWalletId,
-        currency: currencyCode,
-      });
-    }
+    await debitBalance(client, senderWalletId, currencyCode, amount);
+    await creditBalance(client, recipientWalletId, currencyCode, amount);
 
     const txResult = await client.query<Transaction>(
       `INSERT INTO transactions (wallet_id, type, status, currency_from, currency_to, amount_from, amount_to, exchange_rate, related_wallet_id)
