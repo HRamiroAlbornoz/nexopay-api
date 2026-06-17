@@ -1,4 +1,5 @@
 import pool from '../db/connection';
+import { withDbTransaction } from '../db/with-transaction';
 import { CurrencyCode } from '../types/currency.types';
 import { AppError } from '../middleware/error.middleware';
 
@@ -41,11 +42,8 @@ export const TX_COLS = `
 
 export async function executeConversion(data: ConversionData): Promise<Transaction> {
   const { walletId, type, currencyFrom, currencyTo, amountFrom, amountTo, exchangeRate } = data;
-  const client = await pool.connect();
 
-  try {
-    await client.query('BEGIN');
-
+  return withDbTransaction(async (client) => {
     // Bloquea ambas filas en orden canónico (currency_code alfabético) para evitar deadlocks
     // cuando dos operaciones inversas corren concurrentemente sobre la misma wallet
     const balancesResult = await client.query<{ currency_code: string; amount: number }>(
@@ -91,24 +89,14 @@ export async function executeConversion(data: ConversionData): Promise<Transacti
       [walletId, type, currencyFrom, currencyTo, amountFrom, amountTo, exchangeRate]
     );
 
-    await client.query('COMMIT');
-
     return txResult.rows[0];
-  } catch (err) {
-    await client.query('ROLLBACK');
-    throw err;
-  } finally {
-    client.release();
-  }
+  });
 }
 
 export async function executeTransfer(data: TransferData): Promise<Transaction> {
   const { senderWalletId, recipientWalletId, currencyCode, amount } = data;
-  const client = await pool.connect();
 
-  try {
-    await client.query('BEGIN');
-
+  return withDbTransaction(async (client) => {
     // Bloquea ambas filas en orden canónico (wallet_id lexicográfico) para evitar deadlocks
     // en transferencias mutuas simultáneas (A→B y B→A al mismo tiempo)
     const balancesResult = await client.query<{ wallet_id: string; amount: number }>(
@@ -160,15 +148,8 @@ export async function executeTransfer(data: TransferData): Promise<Transaction> 
       [recipientWalletId, currencyCode, amount, senderWalletId]
     );
 
-    await client.query('COMMIT');
-
     return txResult.rows[0];
-  } catch (err) {
-    await client.query('ROLLBACK');
-    throw err;
-  } finally {
-    client.release();
-  }
+  });
 }
 
 export async function getTransactionsByWalletId(

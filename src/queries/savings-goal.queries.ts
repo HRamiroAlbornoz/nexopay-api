@@ -1,4 +1,5 @@
 import pool from '../db/connection';
+import { withDbTransaction } from '../db/with-transaction';
 import { AppError } from '../middleware/error.middleware';
 import { SavingsGoal, CreateSavingsGoalInput } from '../types/savings-goal.types';
 import { Transaction, TX_COLS } from './transaction.queries';
@@ -44,11 +45,7 @@ export async function fundSavingsGoal(
   walletId: string,
   amount: number
 ): Promise<{ goal: SavingsGoal; transaction: Transaction }> {
-  const client = await pool.connect();
-
-  try {
-    await client.query('BEGIN');
-
+  return withDbTransaction(async (client) => {
     const goalResult = await client.query<SavingsGoal>(
       `SELECT ${GOAL_COLS} FROM savings_goals WHERE id = $1 AND wallet_id = $2 FOR UPDATE`,
       [goalId, walletId]
@@ -117,13 +114,6 @@ export async function fundSavingsGoal(
       [walletId, goal.currency_code, amount]
     );
 
-    await client.query('COMMIT');
-
     return { goal: updatedGoalResult.rows[0], transaction: txResult.rows[0] };
-  } catch (err) {
-    await client.query('ROLLBACK');
-    throw err;
-  } finally {
-    client.release();
-  }
+  });
 }
