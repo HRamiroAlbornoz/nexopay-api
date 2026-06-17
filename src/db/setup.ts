@@ -16,6 +16,7 @@ const migrationFiles = [
   '008_alter_transaction_type_savings_goal.sql',
   '009_alter_transaction_type_shared_expense.sql',
   '010_add_shared_expense_id_to_transactions.sql',
+  '011_add_google_auth_to_users.sql',
 ];
 
 async function runMigrations(): Promise<void> {
