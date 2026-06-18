@@ -8,7 +8,7 @@ Backend de NexoPay, una billetera digital multi-moneda. Construido con Express.j
 - **Framework**: Express.js + TypeScript
 - **Base de datos**: PostgreSQL (desplegado en Railway)
 - **Autenticación**: JWT + bcrypt, con inicio de sesión con Google (verificación de ID token)
-- **Tasas de cambio**: Frankfurter API (gratuita, sin API key)
+- **Tasas de cambio**: ExchangeRate-API (`open.er-api.com`, gratuita, sin API key)
 - **Chatbot**: Google Gemini 2.5 Flash
 - **Testing**: Vitest
 
@@ -178,7 +178,7 @@ Todas las rutas (salvo `/health`, `/api/auth/register`, `/api/auth/login` y `/ap
 ### Tasas de cambio (`/api/rates`, auth requerida)
 
 **GET `/`**
-- 200: `{ base: "EUR", rates: { ARS, USD, EUR } }` (Frankfurter API, caché en memoria de 1h con fallback a la última tasa conocida)
+- 200: `{ base: "EUR", rates: { ARS, USD, EUR } }` (ExchangeRate-API, caché en memoria de 1h con fallback a la última tasa conocida)
 
 ### Metas de ahorro (`/api/savings-goals`, auth requerida)
 
@@ -252,7 +252,7 @@ nexopay-api/
 │   ├── queries/            # Consultas SQL por entidad — única capa que toca la DB
 │   ├── middleware/         # Auth, errores, rate limiting y validación
 │   ├── helpers/            # JWT, bcrypt, cálculos de moneda, fetch con timeout
-│   ├── api-calls/          # Integraciones externas (Frankfurter, Gemini)
+│   ├── api-calls/          # Integraciones externas (ExchangeRate-API, Gemini)
 │   ├── types/              # Interfaces TypeScript por dominio
 │   ├── config/             # Configuración de cookies de sesión
 │   ├── db/
@@ -306,11 +306,13 @@ La tabla `transactions` es **append-only**: ninguna fila se modifica ni se borra
 
 ### Caché y fallback de tasas de cambio
 
-`src/api-calls/frankfurter.ts` mantiene una caché en memoria de las tasas de cambio (Frankfurter API) con TTL de 1 hora, en vez de pedir la tasa actual en cada request. Tres decisiones puntuales sobre esa caché:
+`src/api-calls/exchange-rates.ts` mantiene una caché en memoria de las tasas de cambio con TTL de 1 hora, en vez de pedir la tasa actual en cada request. Tres decisiones puntuales sobre esa caché:
 
-- **Deduplicación de requests en vuelo**: si la caché está vencida y llegan varias requests a la vez (ej: varios usuarios comprando simultáneamente), solo la primera dispara un fetch real a Frankfurter — el resto espera la misma promesa en curso (`inflight`) en vez de disparar un fetch cada una. Sin esto, un pico de tráfico se traduciría en N llamadas idénticas a una API externa gratuita y sin SLA.
-- **Fallback a la última tasa conocida**: si el fetch falla (Frankfurter caído, timeout) pero existe una caché previa, se devuelve esa caché vencida en vez de romper la operación — para un usuario es mejor operar con una tasa de hace unos minutos que no poder operar. El error solo se propaga cuando nunca hubo una tasa cacheada (arranque en frío sin conectividad a Frankfurter).
+- **Deduplicación de requests en vuelo**: si la caché está vencida y llegan varias requests a la vez (ej: varios usuarios comprando simultáneamente), solo la primera dispara un fetch real al proveedor — el resto espera la misma promesa en curso (`inflight`) en vez de disparar un fetch cada una. Sin esto, un pico de tráfico se traduciría en N llamadas idénticas a una API externa gratuita y sin SLA.
+- **Fallback a la última tasa conocida**: si el fetch falla (proveedor caído, timeout) pero existe una caché previa, se devuelve esa caché vencida en vez de romper la operación — para un usuario es mejor operar con una tasa de hace unos minutos que no poder operar. El error solo se propaga cuando nunca hubo una tasa cacheada (arranque en frío sin conectividad).
 - **TTL de 1 hora**: balance entre no golpear la API externa en cada operación y no operar con tasas demasiado desactualizadas — las tasas de cambio entre estas monedas no varían lo suficiente en una hora como para que el delay afecte la experiencia del usuario en un proyecto de este alcance.
+
+**Por qué ExchangeRate-API (`open.er-api.com`) y no Frankfurter**: el proyecto usó Frankfurter al principio, pero Frankfurter solo republica referencias del Banco Central Europeo — nunca tuvo, ni va a tener, el Peso Argentino (ARS). Como el schema de validación exigía `ARS` en la respuesta, el `.parse()` de Zod fallaba en el 100% de las llamadas reales (no era un fallo intermitente), lo que rompía `/api/rates` y, en cadena, `buy`/`sell`/`exchange` — todos llaman a `getRates()` antes de ejecutar la conversión. El caché de fallback tampoco lo disimulaba: como nunca hubo una llamada exitosa, nunca se llegó a poblar. Se reemplazó por ExchangeRate-API, que sí cubre EUR/USD/ARS en una sola llamada, sin tocar el resto de la arquitectura (caché, deduplicación, fallback, timeout).
 
 ### Otras decisiones técnicas
 

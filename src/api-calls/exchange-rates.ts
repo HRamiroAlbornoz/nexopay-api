@@ -2,13 +2,13 @@ import { z } from 'zod';
 import { ExchangeRates } from '../types/currency.types';
 import { fetchWithTimeout } from '../helpers/http.helpers';
 
-const FRANKFURTER_URL = 'https://api.frankfurter.app';
+const EXCHANGE_RATES_URL = 'https://open.er-api.com/v6/latest/EUR';
 export const CACHE_TTL_MS = 60 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 8000;
 
 const responseSchema = z.object({
-  base: z.literal('EUR'),
-  date: z.string(),
+  result: z.literal('success'),
+  base_code: z.literal('EUR'),
   rates: z.object({
     USD: z.number().positive(),
     ARS: z.number().positive(),
@@ -24,10 +24,10 @@ let cache: RatesCache | null = null;
 let inflight: Promise<ExchangeRates> | null = null;
 
 async function fetchFromAPI(): Promise<ExchangeRates> {
-  const response = await fetchWithTimeout(`${FRANKFURTER_URL}/latest?from=EUR&to=USD,ARS`, {}, FETCH_TIMEOUT_MS);
+  const response = await fetchWithTimeout(EXCHANGE_RATES_URL, {}, FETCH_TIMEOUT_MS);
 
   if (!response.ok) {
-    throw new Error(`Frankfurter respondió con status ${response.status}`);
+    throw new Error(`ExchangeRate-API respondió con status ${response.status}`);
   }
 
   const data = responseSchema.parse(await response.json());
@@ -57,7 +57,7 @@ export async function getRates(): Promise<ExchangeRates> {
     })
     .catch((err) => {
       if (cache) {
-        console.error('Frankfurter: error al actualizar tasas, usando caché anterior:', err);
+        console.error('ExchangeRate-API: error al actualizar tasas, usando caché anterior:', err);
         return { ...cache.rates };
       }
       throw err;

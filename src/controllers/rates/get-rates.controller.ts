@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { getRates } from '../../api-calls/frankfurter';
+import { getRates } from '../../api-calls/exchange-rates';
 
 export async function getExchangeRates(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {

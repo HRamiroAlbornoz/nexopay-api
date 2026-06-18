@@ -63,7 +63,7 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('- ARS: 1050.0000');
   });
 
-  it('muestra un mensaje claro cuando las tasas no están disponibles (Frankfurter caído)', () => {
+  it('muestra un mensaje claro cuando las tasas no están disponibles (API de tasas caída)', () => {
     const prompt = buildSystemPrompt({ ...mockContext, rates: null });
     expect(prompt).toContain('No disponibles en este momento.');
   });

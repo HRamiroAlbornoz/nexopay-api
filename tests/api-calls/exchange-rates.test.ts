@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { CACHE_TTL_MS } from '../../src/api-calls/frankfurter';
+import { CACHE_TTL_MS } from '../../src/api-calls/exchange-rates';
 
 const mockApiResponse = {
-  base: 'EUR',
-  date: '2024-01-01',
+  result: 'success',
+  base_code: 'EUR',
   rates: { USD: 1.08, ARS: 1050 },
 };
 
@@ -29,7 +29,7 @@ describe('getRates', () => {
 
   it('llama a la API y retorna las tasas correctas en el primer llamado', async () => {
     stubFetchSuccess();
-    const { getRates } = await import('../../src/api-calls/frankfurter');
+    const { getRates } = await import('../../src/api-calls/exchange-rates');
 
     const rates = await getRates();
 
@@ -41,7 +41,7 @@ describe('getRates', () => {
 
   it('usa el caché en el segundo llamado sin volver a fetchear', async () => {
     stubFetchSuccess();
-    const { getRates } = await import('../../src/api-calls/frankfurter');
+    const { getRates } = await import('../../src/api-calls/exchange-rates');
 
     await getRates();
     await getRates();
@@ -61,7 +61,7 @@ describe('getRates', () => {
         .mockRejectedValueOnce(new Error('Network error'))
     );
 
-    const { getRates } = await import('../../src/api-calls/frankfurter');
+    const { getRates } = await import('../../src/api-calls/exchange-rates');
 
     await getRates();
 
@@ -76,7 +76,7 @@ describe('getRates', () => {
 
   it('lanza error cuando la API falla y no hay caché previo', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network error')));
-    const { getRates } = await import('../../src/api-calls/frankfurter');
+    const { getRates } = await import('../../src/api-calls/exchange-rates');
 
     await expect(getRates()).rejects.toThrow('Network error');
   });
@@ -90,14 +90,27 @@ describe('getRates', () => {
         json: () => Promise.resolve({}),
       })
     );
-    const { getRates } = await import('../../src/api-calls/frankfurter');
+    const { getRates } = await import('../../src/api-calls/exchange-rates');
 
     await expect(getRates()).rejects.toThrow('503');
   });
 
+  it('lanza error cuando la respuesta no incluye ARS o USD (ej: result distinto de success)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ result: 'error', 'error-type': 'invalid-key' }),
+      })
+    );
+    const { getRates } = await import('../../src/api-calls/exchange-rates');
+
+    await expect(getRates()).rejects.toThrow();
+  });
+
   it('retorna una copia del caché (no la referencia directa)', async () => {
     stubFetchSuccess();
-    const { getRates } = await import('../../src/api-calls/frankfurter');
+    const { getRates } = await import('../../src/api-calls/exchange-rates');
 
     const rates1 = await getRates();
     rates1.USD = 999;

@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { findWalletByUserIdOrThrow, getBalancesByWalletId } from '../../queries/wallet.queries';
 import { getTransactionsByWalletId } from '../../queries/transaction.queries';
-import { getRates } from '../../api-calls/frankfurter';
+import { getRates } from '../../api-calls/exchange-rates';
 import { generateChatReply } from '../../api-calls/gemini';
 import { buildSystemPrompt, sanitizeUserMessage, MAX_MESSAGE_LENGTH } from '../../helpers/chatbot.helpers';
 import { ChatbotTransactionSummary } from '../../types/chatbot.types';
@@ -39,7 +39,7 @@ export async function chat(req: Request, res: Response, next: NextFunction): Pro
     const wallet = await findWalletByUserIdOrThrow(userId);
 
     // Balances y transacciones son esenciales: si fallan, no hay contexto financiero
-    // confiable y el chat debe fallar. Las tasas son un extra — si Frankfurter no
+    // confiable y el chat debe fallar. Las tasas son un extra — si la API de tasas no
     // responde, el chatbot sigue funcionando sin ellas en vez de romper todo el turno.
     const [balances, transactions] = await Promise.all([
       getBalancesByWalletId(wallet.id),
