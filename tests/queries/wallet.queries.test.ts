@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { PoolClient } from 'pg';
 
 const { mockClient, mockPoolQuery } = vi.hoisted(() => {
@@ -14,7 +14,7 @@ vi.mock('../../src/db/connection', () => ({
   },
 }));
 
-import { createWallet, findWalletByUserIdOrThrow } from '../../src/queries/wallet.queries';
+import { createWallet, findWalletByUserIdOrThrow, getBalanceHistoryByWalletId } from '../../src/queries/wallet.queries';
 import { createUserWithWallet } from '../../src/queries/user.queries';
 import { SUPPORTED_CURRENCIES } from '../../src/types/currency.types';
 
@@ -146,5 +146,122 @@ describe('createUserWithWallet', () => {
     expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
     expect(mockClient.query).not.toHaveBeenCalledWith('COMMIT');
     expect(mockClient.release).toHaveBeenCalledOnce();
+  });
+});
+
+describe('getBalanceHistoryByWalletId', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-18T12:00:00.000Z'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('sin transacciones, devuelve un punto por día en 0 para cada moneda', async () => {
+    mockPoolQuery.mockResolvedValueOnce({ rows: [] });
+
+    const history = await getBalanceHistoryByWalletId('wallet-1', 3);
+
+    expect(history).toEqual([
+      { date: '2026-06-16', ARS: 0, USD: 0, EUR: 0 },
+      { date: '2026-06-17', ARS: 0, USD: 0, EUR: 0 },
+      { date: '2026-06-18', ARS: 0, USD: 0, EUR: 0 },
+    ]);
+  });
+
+  it('aplica correctamente los 8 tipos de transacción y arrastra el balance en días sin movimientos', async () => {
+    mockPoolQuery.mockResolvedValueOnce({
+      rows: [
+        // Antes del rango pedido (days=3, hoy es 2026-06-18) — forma el balance base.
+        {
+          type: 'transfer_in',
+          currency_from: 'ARS',
+          currency_to: 'ARS',
+          amount_from: 5000,
+          amount_to: 5000,
+          created_at: new Date('2026-06-10T10:00:00.000Z'),
+        },
+        // 2026-06-16: único movimiento de ese día.
+        {
+          type: 'buy',
+          currency_from: 'ARS',
+          currency_to: 'USD',
+          amount_from: 1000,
+          amount_to: 1,
+          created_at: new Date('2026-06-16T09:00:00.000Z'),
+        },
+        // 2026-06-17 no tiene transacciones — debe arrastrar el balance de 2026-06-16.
+        // 2026-06-18: el resto de los tipos, en orden.
+        {
+          type: 'savings_goal_fund',
+          currency_from: 'ARS',
+          currency_to: 'ARS',
+          amount_from: 200,
+          amount_to: 200,
+          created_at: new Date('2026-06-18T08:00:00.000Z'),
+        },
+        {
+          type: 'shared_expense_received',
+          currency_from: 'EUR',
+          currency_to: 'EUR',
+          amount_from: 50,
+          amount_to: 50,
+          created_at: new Date('2026-06-18T09:00:00.000Z'),
+        },
+        {
+          type: 'sell',
+          currency_from: 'USD',
+          currency_to: 'ARS',
+          amount_from: 1,
+          amount_to: 1000,
+          created_at: new Date('2026-06-18T10:00:00.000Z'),
+        },
+        {
+          type: 'exchange',
+          currency_from: 'EUR',
+          currency_to: 'USD',
+          amount_from: 50,
+          amount_to: 0.1,
+          created_at: new Date('2026-06-18T11:00:00.000Z'),
+        },
+        {
+          type: 'transfer_out',
+          currency_from: 'ARS',
+          currency_to: 'ARS',
+          amount_from: 100,
+          amount_to: 100,
+          created_at: new Date('2026-06-18T11:30:00.000Z'),
+        },
+        {
+          type: 'shared_expense_paid',
+          currency_from: 'ARS',
+          currency_to: 'ARS',
+          amount_from: 200,
+          amount_to: 200,
+          created_at: new Date('2026-06-18T12:00:00.000Z'),
+        },
+      ],
+    });
+
+    const history = await getBalanceHistoryByWalletId('wallet-1', 3);
+
+    expect(history).toEqual([
+      { date: '2026-06-16', ARS: 4000, USD: 1, EUR: 0 },
+      { date: '2026-06-17', ARS: 4000, USD: 1, EUR: 0 }, // arrastrado, sin movimientos ese día
+      { date: '2026-06-18', ARS: 4500, USD: 0.1, EUR: 0 },
+    ]);
+  });
+
+  it('respeta la cantidad de días pedida', async () => {
+    mockPoolQuery.mockResolvedValueOnce({ rows: [] });
+
+    const history = await getBalanceHistoryByWalletId('wallet-1', 7);
+
+    expect(history).toHaveLength(7);
+    expect(history[0].date).toBe('2026-06-12');
+    expect(history[6].date).toBe('2026-06-18');
   });
 });

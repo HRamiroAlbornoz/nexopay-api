@@ -143,6 +143,11 @@ Todas las rutas (salvo `/health`, `/api/auth/register`, `/api/auth/login` y `/ap
 - 200: `[{ currency_code, amount }]` — un objeto por cada moneda soportada (`ARS`, `USD`, `EUR`)
 - Errores: `404 WALLET_NOT_FOUND`
 
+**GET `/balance-history`** — evolución diaria del balance, reconstruida a partir del ledger de transacciones (no hay tabla de snapshots, se calcula al vuelo)
+- Query: `{ days (default 7, máximo 90) }`
+- 200: `{ history: [{ date: "YYYY-MM-DD", ARS, USD, EUR }] }` — un punto por día, ordenado del más viejo al más nuevo; los días sin movimientos repiten el último balance conocido. Las fechas se calculan en UTC.
+- Errores: `400 VALIDATION_ERROR`, `404 WALLET_NOT_FOUND`
+
 ### Transacciones (`/api/transactions`, auth requerida)
 
 **POST `/buy`** — compra de moneda extranjera con ARS
