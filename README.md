@@ -148,6 +148,11 @@ Todas las rutas (salvo `/health`, `/api/auth/register`, `/api/auth/login` y `/ap
 - 200: `{ history: [{ date: "YYYY-MM-DD", ARS, USD, EUR }] }` — un punto por día, ordenado del más viejo al más nuevo; los días sin movimientos repiten el último balance conocido. Las fechas se calculan en UTC.
 - Errores: `400 VALIDATION_ERROR`, `404 WALLET_NOT_FOUND`
 
+**GET `/lookup`** — busca la wallet de otra cuenta por email (para elegir con quién compartir un gasto). Máximo 30 búsquedas cada 15 minutos por usuario.
+- Query: `{ email }`
+- 200: `{ wallet_id, first_name, last_name }` — nunca devuelve el email ni otros datos del usuario buscado
+- Errores: `400 VALIDATION_ERROR`, `404 RECIPIENT_NOT_FOUND`, `422 CANNOT_SHARE_WITH_SELF` (el email es el del propio usuario autenticado), `429 TOO_MANY_REQUESTS`
+
 ### Transacciones (`/api/transactions`, auth requerida)
 
 **POST `/buy`** — compra de moneda extranjera con ARS

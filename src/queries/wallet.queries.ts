@@ -1,6 +1,6 @@
 import { PoolClient } from 'pg';
 import pool from '../db/connection';
-import { Wallet, Balance, BalanceHistoryPoint } from '../types/wallet.types';
+import { Wallet, Balance, BalanceHistoryPoint, WalletLookupResult } from '../types/wallet.types';
 import { SUPPORTED_CURRENCIES, CurrencyCode } from '../types/currency.types';
 import { AppError } from '../middleware/error.middleware';
 
@@ -62,13 +62,13 @@ export const getBalancesByWalletId = async (walletId: string): Promise<Balance[]
   return result.rows;
 };
 
-export const findWalletByUserEmail = async (email: string): Promise<Wallet | null> => {
+export const findWalletByUserEmail = async (email: string): Promise<WalletLookupResult | null> => {
   const result = await pool.query(
-    `SELECT w.id, w.user_id, w.created_at
+    `SELECT w.id, w.user_id, w.created_at, u.first_name, u.last_name
      FROM wallets w
      JOIN users u ON u.id = w.user_id
      WHERE u.email = $1`,
-    [email]
+    [email.toLowerCase()]
   );
   return result.rows[0] ?? null;
 };

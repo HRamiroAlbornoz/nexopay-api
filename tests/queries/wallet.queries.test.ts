@@ -14,7 +14,12 @@ vi.mock('../../src/db/connection', () => ({
   },
 }));
 
-import { createWallet, findWalletByUserIdOrThrow, getBalanceHistoryByWalletId } from '../../src/queries/wallet.queries';
+import {
+  createWallet,
+  findWalletByUserIdOrThrow,
+  findWalletByUserEmail,
+  getBalanceHistoryByWalletId,
+} from '../../src/queries/wallet.queries';
 import { createUserWithWallet } from '../../src/queries/user.queries';
 import { SUPPORTED_CURRENCIES } from '../../src/types/currency.types';
 
@@ -98,6 +103,38 @@ describe('findWalletByUserIdOrThrow', () => {
       code: 'WALLET_NOT_FOUND',
       httpStatus: 404,
     });
+  });
+});
+
+describe('findWalletByUserEmail', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('retorna la wallet con first_name y last_name cuando existe', async () => {
+    mockPoolQuery.mockResolvedValueOnce({
+      rows: [{ ...mockWallet, first_name: 'Richard', last_name: 'González' }],
+    });
+
+    const wallet = await findWalletByUserEmail('richard@nexopay.com');
+
+    expect(wallet).toEqual({ ...mockWallet, first_name: 'Richard', last_name: 'González' });
+  });
+
+  it('retorna null cuando no existe ninguna cuenta con ese email', async () => {
+    mockPoolQuery.mockResolvedValueOnce({ rows: [] });
+
+    const wallet = await findWalletByUserEmail('nadie@nexopay.com');
+
+    expect(wallet).toBeNull();
+  });
+
+  it('normaliza el email a minúsculas antes de buscar', async () => {
+    mockPoolQuery.mockResolvedValueOnce({ rows: [] });
+
+    await findWalletByUserEmail('Richard@NexoPay.com');
+
+    expect(mockPoolQuery).toHaveBeenCalledWith(expect.any(String), ['richard@nexopay.com']);
   });
 });
 
