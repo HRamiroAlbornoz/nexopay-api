@@ -23,6 +23,6 @@ export interface ChatbotTransactionSummary {
 export interface ChatbotContext {
   balances: Balance[];
   recentTransactions: ChatbotTransactionSummary[];
-  // null cuando Frankfurter falla — el chatbot sigue respondiendo sobre balances/transacciones sin tasas.
+  // null cuando la API de tasas falla — el chatbot sigue respondiendo sobre balances/transacciones sin tasas.
   rates: ExchangeRates | null;
 }

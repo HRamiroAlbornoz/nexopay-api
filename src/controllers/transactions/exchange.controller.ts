@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { findWalletByUserIdOrThrow } from '../../queries/wallet.queries';
 import { executeConversion } from '../../queries/transaction.queries';
-import { getRates } from '../../api-calls/frankfurter';
+import { getRates } from '../../api-calls/exchange-rates';
 import { convertAmount } from '../../helpers/currency.helpers';
 
 const exchangeSchema = z.object({
