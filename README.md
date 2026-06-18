@@ -7,7 +7,7 @@ Backend de NexoPay, una billetera digital multi-moneda. Construido con Express.j
 - **Runtime**: Node.js
 - **Framework**: Express.js + TypeScript
 - **Base de datos**: PostgreSQL (desplegado en Railway)
-- **Autenticación**: JWT + bcrypt
+- **Autenticación**: JWT + bcrypt, con inicio de sesión con Google (verificación de ID token)
 - **Tasas de cambio**: Frankfurter API (gratuita, sin API key)
 - **Chatbot**: Google Gemini 2.5 Flash
 - **Testing**: Vitest
@@ -97,7 +97,7 @@ Todas se validan con Zod al arrancar el servidor (`src/env.ts`) — si falta alg
 
 ## Endpoints de la API
 
-Todas las rutas (salvo `/health`, `/api/auth/register` y `/api/auth/login`) requieren estar autenticado: cookie httpOnly `nexopay_token` (la setean `register` y `login`). Los errores siempre responden con el formato `{ code, message, details? }`.
+Todas las rutas (salvo `/health`, `/api/auth/register`, `/api/auth/login` y `/api/auth/google`) requieren estar autenticado: cookie httpOnly `nexopay_token` (la setean `register`, `login` y `google`). Los errores siempre responden con el formato `{ code, message, details? }`.
 
 ### Health check
 
@@ -118,6 +118,12 @@ Todas las rutas (salvo `/health`, `/api/auth/register` y `/api/auth/login`) requ
 - Body: `{ email, password }`
 - 200: `{ user: { id, email, first_name, last_name } }` (setea la cookie de sesión)
 - Errores: `400 VALIDATION_ERROR`, `401 INVALID_CREDENTIALS`
+
+**POST `/google`** — inicio de sesión con Google (verificación de ID token, sin contraseña)
+- Body: `{ credential }` (ID token de Google Identity Services)
+- 200: `{ user: { id, email, first_name, last_name } }` si la cuenta ya existía (logueada o recién vinculada) · 201 si se creó una cuenta nueva (en ambos casos setea la cookie de sesión)
+- Errores: `400 VALIDATION_ERROR`, `401 INVALID_GOOGLE_TOKEN`, `403 GOOGLE_EMAIL_NOT_VERIFIED` (ya existe una cuenta con ese email, pero Google no la reporta verificada), `404 USER_NOT_FOUND`/`409 EMAIL_TAKEN` (solo bajo condición de carrera)
+- Una cuenta creada solo por Google no tiene contraseña: si intenta loguearse luego con `/login`, recibe el mismo `401 INVALID_CREDENTIALS` genérico que una contraseña incorrecta (a propósito, para no revelar que es Google-only)
 
 **POST `/logout`** (auth requerida)
 - Sin body
