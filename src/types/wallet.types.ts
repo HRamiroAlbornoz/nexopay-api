@@ -11,4 +11,9 @@ export interface Balance {
   amount: number;
 }
 
+export interface WalletLookupResult extends Wallet {
+  first_name: string;
+  last_name: string | null;
+}
+
 export type BalanceHistoryPoint = { date: string } & Record<CurrencyCode, number>;
